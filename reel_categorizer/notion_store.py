@@ -3,6 +3,18 @@ from __future__ import annotations
 from .models import ReelMetadata
 
 
+def compose_title(author: str, inferred_title: str, has_text: bool) -> str:
+    """Build the Notion Title: "username - Inferred Title".
+
+    Uses the best-effort inferred title when the reel had any caption/hashtags
+    to work with; falls back to "Untitled" when there was nothing to infer from
+    (or the model returned nothing). Drops the "username - " prefix if the
+    author is unknown.
+    """
+    title = inferred_title.strip() if (has_text and inferred_title.strip()) else "Untitled"
+    return f"{author} - {title}" if author else title
+
+
 class NotionStore:
     """Reads/writes the reel database via Notion's data-sources API.
 
@@ -48,9 +60,11 @@ class NotionStore:
         return sel["name"] if sel else "Uncategorized"
 
     def create_entry(
-        self, meta: ReelMetadata, category: str, tags: list[str]
+        self, meta: ReelMetadata, category: str, tags: list[str],
+        inferred_title: str = "",
     ) -> str:
-        title = meta.caption[:80] or meta.author or meta.shortcode
+        has_text = bool(meta.caption.strip() or meta.hashtags)
+        title = compose_title(meta.author, inferred_title, has_text)
         props = {
             "Title": {"title": [{"text": {"content": title}}]},
             "Category": {"select": {"name": category}},

@@ -37,8 +37,8 @@ class _Store:
     def existing_tags(self):
         return self._tags
 
-    def create_entry(self, meta, category, tags):
-        self.created.append((category, tags))
+    def create_entry(self, meta, category, tags, inferred_title=""):
+        self.created.append((category, tags, inferred_title))
         return "https://notion/p"
 
 
@@ -65,13 +65,15 @@ def test_fetch_error():
 
 
 def test_saved():
-    c = Classification("Tech", False, ["ai"], "r")
+    c = Classification("Tech", False, ["ai"], "r", "Cool Gadget Demo")
     store = _Store()
     r = _pipe(_Fetcher(), _Classifier(c), store).process(
         "https://www.instagram.com/reel/abc/")
     assert r.kind == "saved"
     assert r.category == "Tech"
     assert store.created[0][0] == "Tech"
+    assert store.created[0][2] == "Cool Gadget Demo"  # inferred title threaded through
+    assert r.title == "Cool Gadget Demo"
 
 
 def test_needs_category_when_new():
@@ -96,13 +98,13 @@ def test_needs_category_when_unknown_category():
 def test_save_persists():
     store = _Store()
     p = _pipe(_Fetcher(), _Classifier(None), store)
-    out = p.save(ReelMetadata(shortcode="abc", url="u"), "Tech", ["ai"])
+    out = p.save(ReelMetadata(shortcode="abc", url="u"), "Tech", ["ai"], "My Title")
     assert out == "https://notion/p"
-    assert store.created[0] == ("Tech", ["ai"])
+    assert store.created[0] == ("Tech", ["ai"], "My Title")
 
 
 class _FailingStore(_Store):
-    def create_entry(self, meta, category, tags):
+    def create_entry(self, meta, category, tags, inferred_title=""):
         raise RuntimeError("notion down")
 
 

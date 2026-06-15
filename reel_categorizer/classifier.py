@@ -19,6 +19,7 @@ class Classification:
     is_new_category: bool
     tags: list[str]
     reason: str
+    title: str = ""
 
 
 def build_prompt(
@@ -42,7 +43,10 @@ def build_prompt(
         f"Caption:\n{meta.caption}\n\n"
         "Respond with ONLY a JSON object with keys: "
         "category (string), is_new_category (boolean), "
-        "tags (array of 3-6 lowercase kebab-case strings), reason (string). "
+        "tags (array of 3-6 lowercase kebab-case strings), reason (string), "
+        "title (string: a concise descriptive title for this reel, Title Case, "
+        "at most 8 words, no emojis or hashtags; if the caption and hashtags "
+        "give you nothing to work with, return an empty string). "
         "If no listed category fits well, set is_new_category true and put "
         "your proposed new category name in category."
     )
@@ -64,6 +68,7 @@ def parse_response(text: str) -> Classification:
         is_new_category=bool(data["is_new_category"]),
         tags=tags,
         reason=str(data.get("reason", "")).strip(),
+        title=str(data.get("title", "")).strip(),
     )
 
 

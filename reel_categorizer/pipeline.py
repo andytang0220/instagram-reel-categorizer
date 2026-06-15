@@ -17,6 +17,7 @@ class ProcessResult:
     tags: list[str] = field(default_factory=list)
     proposed_category: str | None = None
     meta: ReelMetadata | None = None
+    title: str = ""
 
 
 class Pipeline:
@@ -59,16 +60,21 @@ class Pipeline:
                 proposed_category=result.category,
                 tags=result.tags,
                 meta=meta,
+                title=result.title,
             )
 
         try:
-            self.store.create_entry(meta, result.category, result.tags)
+            self.store.create_entry(meta, result.category, result.tags, result.title)
         except Exception as exc:  # noqa: BLE001 - surface any Notion write failure
             return ProcessResult("error", f"Couldn't save to Notion ({exc}).")
         return ProcessResult(
             "saved", f"Saved to {result.category}.",
             category=result.category, tags=result.tags, meta=meta,
+            title=result.title,
         )
 
-    def save(self, meta: ReelMetadata, category: str, tags: list[str]) -> str:
-        return self.store.create_entry(meta, category, tags)
+    def save(
+        self, meta: ReelMetadata, category: str, tags: list[str],
+        title: str = "",
+    ) -> str:
+        return self.store.create_entry(meta, category, tags, title)

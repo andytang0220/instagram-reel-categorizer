@@ -58,7 +58,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         if result.kind == "needs_category":
             token = uuid.uuid4().hex[:8]
             context.application.bot_data.setdefault("pending", {})[token] = (
-                result.meta, result.tags, result.proposed_category)
+                result.meta, result.tags, result.proposed_category, result.title)
             categories = load_categories()
             keyboard = [[InlineKeyboardButton(
                 f'Add "{result.proposed_category}" & file',
@@ -89,18 +89,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not entry:
         await query.edit_message_text("That request expired — send the link again.")
         return
-    meta, tags, proposed = entry
+    meta, tags, proposed, title = entry
     try:
         if action == "add":
             add_category(proposed)
-            pipeline.save(meta, proposed, tags)
+            pipeline.save(meta, proposed, tags, title)
             await query.edit_message_text(f"Added category “{proposed}” and saved.")
         elif action == "pick":
             category = load_categories()[int(parts[2])]
-            pipeline.save(meta, category, tags)
+            pipeline.save(meta, category, tags, title)
             await query.edit_message_text(f"Saved to {category}.")
         else:  # skip
-            pipeline.save(meta, "Uncategorized", tags)
+            pipeline.save(meta, "Uncategorized", tags, title)
             await query.edit_message_text("Saved to Uncategorized.")
     except Exception as exc:  # noqa: BLE001 - surface save/Notion failures to the user
         await query.edit_message_text(f"Couldn't save to Notion: {exc}")

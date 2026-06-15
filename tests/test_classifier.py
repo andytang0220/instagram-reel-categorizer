@@ -14,15 +14,23 @@ def test_build_prompt_includes_categories_tags_and_caption():
     assert "Food Recipes" in p
     assert "budget" in p
     assert "mealprep" in p
+    assert "title" in p.lower()
 
 
 def test_parse_response_normalizes_tags():
     text = ('{"category":"Food Recipes","is_new_category":false,'
-            '"tags":["High-Protein"," meal-prep "],"reason":"food"}')
+            '"tags":["High-Protein"," meal-prep "],"reason":"food",'
+            '"title":"High-Protein Meal Prep"}')
     c = parse_response(text)
     assert c.category == "Food Recipes"
     assert c.is_new_category is False
     assert c.tags == ["high-protein", "meal-prep"]
+    assert c.title == "High-Protein Meal Prep"
+
+
+def test_parse_response_title_defaults_to_empty():
+    text = '{"category":"Tech","is_new_category":false,"tags":["ai"],"reason":"x"}'
+    assert parse_response(text).title == ""
 
 
 def test_parse_response_extracts_embedded_json():

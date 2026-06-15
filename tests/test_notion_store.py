@@ -1,7 +1,7 @@
 from datetime import date
 
 from reel_categorizer.models import ReelMetadata
-from reel_categorizer.notion_store import NotionStore
+from reel_categorizer.notion_store import NotionStore, compose_title
 
 _DS_ID = "ds-123"
 
@@ -80,3 +80,37 @@ def test_create_entry_without_post_date_omits_property():
     NotionStore(fake, "db").create_entry(m, "Tech", ["ai"])
     _, props = fake.created[0]
     assert "Post Date" not in props
+
+
+def test_compose_title_with_text_uses_inferred():
+    assert compose_title("chefjohn", "15-Minute Tacos", has_text=True) == \
+        "chefjohn - 15-Minute Tacos"
+
+
+def test_compose_title_no_text_falls_back_to_untitled():
+    assert compose_title("gymrat", "Anything", has_text=False) == "gymrat - Untitled"
+
+
+def test_compose_title_empty_inferred_falls_back():
+    assert compose_title("gymrat", "  ", has_text=True) == "gymrat - Untitled"
+
+
+def test_compose_title_without_author_drops_prefix():
+    assert compose_title("", "Cool Clip", has_text=True) == "Cool Clip"
+
+
+def test_create_entry_title_is_author_dash_inferred():
+    fake = _FakeNotion()
+    m = ReelMetadata(shortcode="abc", url="u", caption="Tacos #food",
+                     hashtags=["food"], author="chef")
+    NotionStore(fake, "db").create_entry(m, "Food Recipes", ["tacos"], "Best Street Tacos")
+    _, props = fake.created[0]
+    assert props["Title"]["title"][0]["text"]["content"] == "chef - Best Street Tacos"
+
+
+def test_create_entry_title_untitled_when_no_caption_or_hashtags():
+    fake = _FakeNotion()
+    m = ReelMetadata(shortcode="abc", url="u", caption="", hashtags=[], author="chef")
+    NotionStore(fake, "db").create_entry(m, "Tech", ["ai"], "Model Guessed This")
+    _, props = fake.created[0]
+    assert props["Title"]["title"][0]["text"]["content"] == "chef - Untitled"
