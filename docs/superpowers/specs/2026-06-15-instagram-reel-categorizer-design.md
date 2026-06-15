@@ -117,8 +117,9 @@ source:     str            # which fetcher succeeded ("ytdlp" | "apify")
 
 When `is_new_category` is true, the bot replies with an inline keyboard:
 
-- **[Add "X" & file]** → append `X` to `categories.json`, add it as a Notion
-  Category select option, then write the row.
+- **[Add "X" & file]** → append `X` to `categories.json`, then write the row.
+  (Notion auto-creates the `Category` select option when a page is written with
+  a new value, so no explicit schema update is needed.)
 - **[Pick existing…]** → show the current categories as buttons; file under the
   chosen one.
 - **[Skip]** → file under `Uncategorized` (auto-created if absent) so nothing is lost.

@@ -61,7 +61,10 @@ class Pipeline:
                 meta=meta,
             )
 
-        self.store.create_entry(meta, result.category, result.tags)
+        try:
+            self.store.create_entry(meta, result.category, result.tags)
+        except Exception as exc:  # noqa: BLE001 - surface any Notion write failure
+            return ProcessResult("error", f"Couldn't save to Notion ({exc}).")
         return ProcessResult(
             "saved", f"Saved to {result.category}.",
             category=result.category, tags=result.tags, meta=meta,

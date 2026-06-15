@@ -99,3 +99,16 @@ def test_save_persists():
     out = p.save(ReelMetadata(shortcode="abc", url="u"), "Tech", ["ai"])
     assert out == "https://notion/p"
     assert store.created[0] == ("Tech", ["ai"])
+
+
+class _FailingStore(_Store):
+    def create_entry(self, meta, category, tags):
+        raise RuntimeError("notion down")
+
+
+def test_save_failure_returns_error():
+    c = Classification("Tech", False, ["ai"], "r")
+    r = _pipe(_Fetcher(), _Classifier(c), _FailingStore()).process(
+        "https://www.instagram.com/reel/abc/")
+    assert r.kind == "error"
+    assert "Notion" in r.message

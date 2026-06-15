@@ -89,18 +89,22 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.edit_message_text("That request expired — send the link again.")
         return
     meta, tags, proposed = entry
-    if action == "add":
-        add_category(proposed)
-        pipeline.save(meta, proposed, tags)
-        await query.edit_message_text(f"Added category “{proposed}” and saved.")
-    elif action == "pick":
-        category = load_categories()[int(parts[2])]
-        pipeline.save(meta, category, tags)
-        await query.edit_message_text(f"Saved to {category}.")
-    else:  # skip
-        pipeline.save(meta, "Uncategorized", tags)
-        await query.edit_message_text("Saved to Uncategorized.")
-    pending.pop(token, None)
+    try:
+        if action == "add":
+            add_category(proposed)
+            pipeline.save(meta, proposed, tags)
+            await query.edit_message_text(f"Added category “{proposed}” and saved.")
+        elif action == "pick":
+            category = load_categories()[int(parts[2])]
+            pipeline.save(meta, category, tags)
+            await query.edit_message_text(f"Saved to {category}.")
+        else:  # skip
+            pipeline.save(meta, "Uncategorized", tags)
+            await query.edit_message_text("Saved to Uncategorized.")
+    except Exception as exc:  # noqa: BLE001 - surface save/Notion failures to the user
+        await query.edit_message_text(f"Couldn't save to Notion: {exc}")
+    finally:
+        pending.pop(token, None)
 
 
 def main() -> None:
