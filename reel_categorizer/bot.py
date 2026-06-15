@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 import uuid
 
@@ -109,6 +110,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 def main() -> None:
+    # python-telegram-bot v21 calls asyncio.get_event_loop(), which raises on
+    # Python 3.12+ when no loop is set. Ensure one exists before run_polling().
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
     settings = load_settings()
     app = Application.builder().token(settings.telegram_token).build()
     app.bot_data["pipeline"] = build_pipeline(settings)
