@@ -38,8 +38,7 @@ def build_pipeline(settings) -> Pipeline:
     fetchers = [YtdlpFetcher(), ApifyFetcher(settings.apify_token)]
     classifier = Classifier(anthropic_completion_fn(settings.anthropic_api_key))
     store = NotionStore(
-        NotionClient(auth=settings.notion_token, notion_version="2022-06-28"),
-        settings.notion_database_id,
+        NotionClient(auth=settings.notion_token), settings.notion_database_id
     )
     return Pipeline(fetchers, classifier, store, load_categories)
 

@@ -3,14 +3,20 @@ from datetime import date
 from reel_categorizer.models import ReelMetadata
 from reel_categorizer.notion_store import NotionStore
 
+_DS_ID = "ds-123"
+
 
 class _FakeNotion:
-    def __init__(self, db=None, query=None):
-        self._db = db or {"properties": {"Tags": {"multi_select": {"options": [
+    def __init__(self, ds=None, query=None):
+        # databases.retrieve returns the data_sources list
+        self._db = {"data_sources": [{"id": _DS_ID, "name": "Reels"}]}
+        # data_sources.retrieve returns the schema (with Tags options)
+        self._ds = ds or {"properties": {"Tags": {"multi_select": {"options": [
             {"name": "budget"}, {"name": "quick"}]}}}}
         self._query = query or {"results": []}
         self.created = []
         self.databases = self._Databases(self)
+        self.data_sources = self._DataSources(self)
         self.pages = self._Pages(self)
 
     class _Databases:
@@ -20,7 +26,14 @@ class _FakeNotion:
         def retrieve(self, database_id):
             return self._o._db
 
-        def query(self, database_id, filter):
+    class _DataSources:
+        def __init__(self, outer):
+            self._o = outer
+
+        def retrieve(self, data_source_id):
+            return self._o._ds
+
+        def query(self, data_source_id, filter):
             return self._o._query
 
     class _Pages:
@@ -28,7 +41,7 @@ class _FakeNotion:
             self._o = outer
 
         def create(self, parent, properties):
-            self._o.created.append(properties)
+            self._o.created.append((parent, properties))
             return {"url": "https://notion.so/page"}
 
 
@@ -53,7 +66,8 @@ def test_create_entry_builds_props():
         hashtags=["food"], author="chef", post_date=date(2026, 1, 5))
     url = store.create_entry(m, "Food Places", ["tacos", "budget"])
     assert url == "https://notion.so/page"
-    props = fake.created[0]
+    parent, props = fake.created[0]
+    assert parent == {"type": "data_source_id", "data_source_id": _DS_ID}
     assert props["Category"]["select"]["name"] == "Food Places"
     assert {"name": "tacos"} in props["Tags"]["multi_select"]
     assert props["Shortcode"]["rich_text"][0]["text"]["content"] == "abc"
@@ -64,4 +78,5 @@ def test_create_entry_without_post_date_omits_property():
     fake = _FakeNotion()
     m = ReelMetadata(shortcode="abc", url="u", caption="hi", author="x")
     NotionStore(fake, "db").create_entry(m, "Tech", ["ai"])
-    assert "Post Date" not in fake.created[0]
+    _, props = fake.created[0]
+    assert "Post Date" not in props

@@ -4,19 +4,40 @@ from .models import ReelMetadata
 
 
 class NotionStore:
+    """Reads/writes the reel database via Notion's data-sources API.
+
+    A Notion database exposes one or more data sources; queries, schema, and
+    page creation all happen against a data source, resolved here from the
+    database id.
+    """
+
     def __init__(self, client, database_id: str):
         self._client = client
         self._db = database_id
+        self._ds_id: str | None = None
+
+    def _data_source_id(self) -> str:
+        if self._ds_id is None:
+            db = self._client.databases.retrieve(self._db)
+            sources = db.get("data_sources", [])
+            if not sources:
+                raise RuntimeError(
+                    f"Notion database {self._db} has no data sources"
+                )
+            self._ds_id = sources[0]["id"]
+        return self._ds_id
 
     def existing_tags(self) -> list[str]:
-        db = self._client.databases.retrieve(self._db)
-        prop = db.get("properties", {}).get("Tags", {})
+        ds = self._client.data_sources.retrieve(
+            data_source_id=self._data_source_id()
+        )
+        prop = ds.get("properties", {}).get("Tags", {})
         options = prop.get("multi_select", {}).get("options", [])
         return [o["name"] for o in options]
 
     def find_by_shortcode(self, shortcode: str) -> str | None:
-        res = self._client.databases.query(
-            database_id=self._db,
+        res = self._client.data_sources.query(
+            data_source_id=self._data_source_id(),
             filter={"property": "Shortcode",
                     "rich_text": {"equals": shortcode}},
         )
@@ -44,6 +65,8 @@ class NotionStore:
         if meta.post_date:
             props["Post Date"] = {"date": {"start": meta.post_date.isoformat()}}
         page = self._client.pages.create(
-            parent={"database_id": self._db}, properties=props
+            parent={"type": "data_source_id",
+                    "data_source_id": self._data_source_id()},
+            properties=props,
         )
         return page.get("url", "")
