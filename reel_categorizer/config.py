@@ -25,6 +25,21 @@ def add_category(name: str, path: Path = DEFAULT_CATEGORIES_PATH) -> list[str]:
     return cats
 
 
+def match_category(name: str, categories: list[str]) -> str | None:
+    """Return the existing category matching `name` case-insensitively, else None.
+
+    Lets a user-typed category name reuse an existing category's canonical
+    spelling instead of creating a near-duplicate (e.g. "tech" -> "Tech").
+    """
+    n = name.strip().lower()
+    if not n:
+        return None
+    for c in categories:
+        if c.lower() == n:
+            return c
+    return None
+
+
 @dataclass
 class Settings:
     telegram_token: str

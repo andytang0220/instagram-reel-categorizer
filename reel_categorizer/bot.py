@@ -16,7 +16,7 @@ from telegram.ext import (
 )
 
 from .classifier import Classifier, anthropic_completion_fn
-from .config import add_category, load_categories, load_settings
+from .config import add_category, load_categories, load_settings, match_category
 from .fetchers.apify_fetcher import ApifyFetcher
 from .fetchers.ytdlp_fetcher import YtdlpFetcher
 from .notion_store import NotionStore
@@ -47,7 +47,38 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(HELP)
 
 
+async def _save_typed_category(update: Update, context: ContextTypes.DEFAULT_TYPE,
+                               token: str) -> None:
+    """Handle a free-text category name the user typed for a pending reel."""
+    pipeline: Pipeline = context.application.bot_data["pipeline"]
+    pending = context.application.bot_data.get("pending", {})
+    entry = pending.pop(token, None)
+    name = (update.message.text or "").strip()
+    if entry is None:
+        await update.message.reply_text("That request expired — send the reel again.")
+        return
+    if not name:
+        await update.message.reply_text("A category name can't be empty — send the reel again.")
+        return
+    meta, tags, _proposed, title = entry
+    category = match_category(name, load_categories()) or name
+    try:
+        if category == name:  # genuinely new name (no case-insensitive match)
+            add_category(name)
+        pipeline.save(meta, category, tags, title)
+    except Exception as exc:  # noqa: BLE001 - surface save/Notion failures
+        await update.message.reply_text(f"Couldn't save to Notion: {exc}")
+        return
+    await update.message.reply_text(f"Saved to {category}.")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # If we previously asked this chat to type a category name, consume it here.
+    token = context.chat_data.pop("awaiting_category_token", None)
+    if token is not None:
+        await _save_typed_category(update, context, token)
+        return
+
     urls = [u for u in extract_urls(update.message.text) if "instagram.com" in u]
     if not urls:
         await update.message.reply_text("Send me an Instagram reel link.")
@@ -67,6 +98,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 [InlineKeyboardButton(c, callback_data=f"pick:{token}:{i}")]
                 for i, c in enumerate(categories)
             ]
+            keyboard.append([InlineKeyboardButton(
+                "✏️ Enter a different name", callback_data=f"type:{token}")])
             keyboard.append([InlineKeyboardButton(
                 "Skip (Uncategorized)", callback_data=f"skip:{token}")])
             await update.message.reply_text(
@@ -90,6 +123,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.edit_message_text("That request expired — send the link again.")
         return
     meta, tags, proposed, title = entry
+    if action == "type":
+        # Ask the user to type a name; keep the pending entry alive so the next
+        # text message (handled in handle_message) can finish the save.
+        context.chat_data["awaiting_category_token"] = token
+        await query.edit_message_text(
+            "✏️ Send me the category name you'd like to use for this reel."
+        )
+        return
     try:
         if action == "add":
             add_category(proposed)

@@ -1,6 +1,17 @@
 import json
 from reel_categorizer.config import (
-    load_categories, add_category, load_settings, Settings)
+    load_categories, add_category, load_settings, Settings, match_category)
+
+
+def test_match_category_case_insensitive_returns_canonical():
+    cats = ["Food Recipes", "Tech"]
+    assert match_category("tech", cats) == "Tech"
+    assert match_category("  FOOD recipes ", cats) == "Food Recipes"
+
+
+def test_match_category_no_match_returns_none():
+    assert match_category("Cooking", ["Tech", "Sports"]) is None
+    assert match_category("   ", ["Tech"]) is None
 
 
 def test_load_categories(tmp_path):
