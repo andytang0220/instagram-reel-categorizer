@@ -1,6 +1,25 @@
 import json
 from reel_categorizer.config import (
-    load_categories, add_category, load_settings, Settings, match_category)
+    load_categories, add_category, remove_category, load_settings, Settings,
+    match_category)
+
+
+def test_remove_category_case_insensitive(tmp_path):
+    p = tmp_path / "c.json"
+    p.write_text(json.dumps(["Food Recipes", "Tech", "Sports"]))
+    cats, removed = remove_category("tech", p)
+    assert removed is True
+    assert cats == ["Food Recipes", "Sports"]
+    assert json.loads(p.read_text()) == ["Food Recipes", "Sports"]
+
+
+def test_remove_category_absent_is_noop(tmp_path):
+    p = tmp_path / "c.json"
+    p.write_text(json.dumps(["Tech"]))
+    cats, removed = remove_category("Cooking", p)
+    assert removed is False
+    assert cats == ["Tech"]
+    assert json.loads(p.read_text()) == ["Tech"]
 
 
 def test_match_category_case_insensitive_returns_canonical():

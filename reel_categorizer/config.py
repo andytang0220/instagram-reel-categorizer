@@ -25,6 +25,26 @@ def add_category(name: str, path: Path = DEFAULT_CATEGORIES_PATH) -> list[str]:
     return cats
 
 
+def remove_category(
+    name: str, path: Path = DEFAULT_CATEGORIES_PATH
+) -> tuple[list[str], bool]:
+    """Remove a category (case-insensitive) from the list file.
+
+    Returns (updated categories, removed?). A no-op (returns removed=False) when
+    no category matches. Only touches `categories.json` — Notion's existing rows
+    and select options are left alone, so removing a category simply makes the
+    bot treat it as new again next time.
+    """
+    path = Path(path)
+    cats = load_categories(path)
+    canonical = match_category(name, cats)
+    if canonical is None:
+        return cats, False
+    cats = [c for c in cats if c != canonical]
+    path.write_text(json.dumps(cats, indent=2))
+    return cats, True
+
+
 def match_category(name: str, categories: list[str]) -> str | None:
     """Return the existing category matching `name` case-insensitively, else None.
 

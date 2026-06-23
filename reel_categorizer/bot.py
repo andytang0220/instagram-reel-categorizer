@@ -16,7 +16,8 @@ from telegram.ext import (
 )
 
 from .classifier import Classifier, anthropic_completion_fn
-from .config import add_category, load_categories, load_settings, match_category
+from .config import (
+    add_category, load_categories, load_settings, match_category, remove_category)
 from .fetchers.apify_fetcher import ApifyFetcher
 from .fetchers.ytdlp_fetcher import YtdlpFetcher
 from .notion_store import NotionStore
@@ -45,6 +46,31 @@ def build_pipeline(settings) -> Pipeline:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(HELP)
+
+
+async def list_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    cats = load_categories()
+    if cats:
+        await update.message.reply_text(
+            "Categories:\n" + "\n".join(f"• {c}" for c in cats))
+    else:
+        await update.message.reply_text("No categories yet.")
+
+
+async def delete_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    name = " ".join(context.args).strip()
+    if not name:
+        await update.message.reply_text("Usage: /deletecategory <name>")
+        return
+    cats, removed = remove_category(name)
+    remaining = ", ".join(cats) or "(none)"
+    if removed:
+        await update.message.reply_text(
+            f"Deleted “{name}”. The bot will treat it as new again.\n"
+            f"Remaining: {remaining}")
+    else:
+        await update.message.reply_text(
+            f"No category matching “{name}”.\nCurrent: {remaining}")
 
 
 async def _save_typed_category(update: Update, context: ContextTypes.DEFAULT_TYPE,
@@ -161,6 +187,8 @@ def main() -> None:
     app = Application.builder().token(settings.telegram_token).build()
     app.bot_data["pipeline"] = build_pipeline(settings)
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("categories", list_categories))
+    app.add_handler(CommandHandler("deletecategory", delete_category))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
