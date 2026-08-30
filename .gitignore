@@ -12,3 +12,10 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Cached reel thumbnails
+thumbnails/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
