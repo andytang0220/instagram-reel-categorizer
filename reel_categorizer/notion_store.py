@@ -1,6 +1,76 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from .models import ReelMetadata
+from .urls import InvalidReelURL, extract_shortcode
+
+
+@dataclass
+class ReelRow:
+    """A saved reel, read back out of Notion for display.
+
+    Dates stay as ISO strings because the only consumer is the web API, which
+    hands them straight to the browser.
+    """
+
+    page_id: str = ""
+    shortcode: str = ""
+    title: str = ""
+    url: str = ""
+    category: str = ""
+    tags: list[str] = field(default_factory=list)
+    author: str = ""
+    views: int | None = None
+    post_date: str = ""
+    date_added: str = ""
+    thumbnail_url: str = ""
+
+
+def _plain_text(prop: dict | None, key: str) -> str:
+    """Join a Notion title/rich_text array, which Notion splits into chunks."""
+    if not prop:
+        return ""
+    return "".join(chunk.get("plain_text", "") for chunk in prop.get(key) or [])
+
+
+def parse_row(page: dict) -> ReelRow:
+    """Map a Notion page to a ReelRow.
+
+    Every property is treated as optional: rows saved before a property
+    existed simply come back with the field empty.
+    """
+    props = page.get("properties") or {}
+
+    def prop(name: str) -> dict:
+        return props.get(name) or {}
+
+    select = prop("Category").get("select") or {}
+    date_prop = prop("Post Date").get("date") or {}
+    url = prop("Reel URL").get("url") or ""
+
+    shortcode = _plain_text(prop("Shortcode"), "rich_text")
+    if not shortcode and url:
+        try:
+            shortcode = extract_shortcode(url)
+        except InvalidReelURL:
+            shortcode = ""
+
+    return ReelRow(
+        page_id=page.get("id", ""),
+        shortcode=shortcode,
+        title=_plain_text(prop("Title"), "title"),
+        url=url,
+        category=select.get("name") or "",
+        tags=[t["name"] for t in prop("Tags").get("multi_select") or []],
+        author=_plain_text(prop("Author"), "rich_text"),
+        views=prop("Views").get("number"),
+        post_date=date_prop.get("start") or "",
+        # Rows predating the `Date Added` property still sort correctly.
+        date_added=(prop("Date Added").get("created_time")
+                    or page.get("created_time", "")),
+        thumbnail_url=prop("Thumbnail URL").get("url") or "",
+    )
 
 
 def compose_title(author: str, inferred_title: str, has_text: bool) -> str:
@@ -78,9 +148,45 @@ class NotionStore:
         }
         if meta.post_date:
             props["Post Date"] = {"date": {"start": meta.post_date.isoformat()}}
+        if meta.view_count is not None:
+            props["Views"] = {"number": meta.view_count}
+        if meta.thumbnail_url:
+            props["Thumbnail URL"] = {"url": meta.thumbnail_url}
         page = self._client.pages.create(
             parent={"type": "data_source_id",
                     "data_source_id": self._data_source_id()},
             properties=props,
         )
         return page.get("url", "")
+
+    def query_all(self) -> list[ReelRow]:
+        """Every saved reel, newest first."""
+        rows: list[ReelRow] = []
+        cursor = None
+        while True:
+            res = self._client.data_sources.query(
+                data_source_id=self._data_source_id(),
+                sorts=[{"timestamp": "created_time", "direction": "descending"}],
+                start_cursor=cursor,
+                page_size=100,
+            )
+            rows.extend(parse_row(p) for p in res.get("results", []))
+            if not res.get("has_more"):
+                return rows
+            cursor = res.get("next_cursor")
+            if not cursor:
+                return rows
+
+    def update_entry(
+        self, page_id: str, views: int | None = None,
+        thumbnail_url: str | None = None,
+    ) -> None:
+        """Patch only the properties actually supplied. Used by the backfill."""
+        props = {}
+        if views is not None:
+            props["Views"] = {"number": views}
+        if thumbnail_url:
+            props["Thumbnail URL"] = {"url": thumbnail_url}
+        if not props:
+            return
+        self._client.pages.update(page_id=page_id, properties=props)

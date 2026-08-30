@@ -12,6 +12,11 @@ load_dotenv()
 DEFAULT_CATEGORIES_PATH = Path(os.getenv("CATEGORIES_PATH", "categories.json"))
 
 
+def thumbnail_dir() -> Path:
+    """Where downloaded reel thumbnails are cached."""
+    return Path(os.getenv("THUMBNAIL_DIR", "thumbnails"))
+
+
 def load_categories(path: Path = DEFAULT_CATEGORIES_PATH) -> list[str]:
     return json.loads(Path(path).read_text())
 

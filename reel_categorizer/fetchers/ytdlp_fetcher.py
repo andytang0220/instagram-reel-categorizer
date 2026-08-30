@@ -5,7 +5,26 @@ from datetime import datetime
 import yt_dlp
 
 from ..models import ReelMetadata
-from .base import FetchError, MetadataFetcher, parse_hashtags
+from .base import FetchError, MetadataFetcher, parse_hashtags, to_int
+
+
+def _pick_thumbnail(info: dict) -> str:
+    """Best available thumbnail URL from a yt-dlp info dict.
+
+    Prefers the flat `thumbnail` key; falls back to the widest entry in
+    `thumbnails`, which is what the reel extractor populates when it can't
+    single out a primary image.
+    """
+    if info.get("thumbnail"):
+        return str(info["thumbnail"])
+    candidates = [t for t in info.get("thumbnails") or [] if t.get("url")]
+    if not candidates:
+        return ""
+    widest = max(
+        enumerate(candidates),
+        key=lambda pair: (to_int(pair[1].get("width")) or 0, pair[0]),
+    )[1]
+    return str(widest["url"])
 
 
 def _default_factory():
@@ -43,4 +62,6 @@ class YtdlpFetcher(MetadataFetcher):
             author=info.get("uploader") or info.get("uploader_id") or "",
             post_date=post_date,
             source=self.name,
+            thumbnail_url=_pick_thumbnail(info),
+            view_count=to_int(info.get("view_count")),
         )

@@ -3,10 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .classifier import Classification
+from .config import thumbnail_dir
 from .fetchers import get_metadata
 from .fetchers.base import FetchError
 from .models import ReelMetadata
+from .thumbnails import cache_thumbnail as _cache_thumbnail
 from .urls import InvalidReelURL, canonical_url, extract_shortcode
+
+
+def _default_cacher(shortcode: str, url: str):
+    return _cache_thumbnail(shortcode, url, thumbnail_dir())
 
 
 @dataclass
@@ -21,11 +27,23 @@ class ProcessResult:
 
 
 class Pipeline:
-    def __init__(self, fetchers, classifier, store, load_categories):
+    def __init__(self, fetchers, classifier, store, load_categories,
+                 cache_thumbnail=None):
         self.fetchers = fetchers
         self.classifier = classifier
         self.store = store
         self.load_categories = load_categories
+        # cache_thumbnail(shortcode, url) -> path | None
+        self.cache_thumbnail = cache_thumbnail or _default_cacher
+
+    def _cache_thumbnail(self, meta: ReelMetadata) -> None:
+        """Best-effort thumbnail download. A failure never fails the save."""
+        if not meta.thumbnail_url:
+            return
+        try:
+            self.cache_thumbnail(meta.shortcode, meta.thumbnail_url)
+        except Exception:  # noqa: BLE001 - the reel is already saved
+            pass
 
     def process(self, url: str) -> ProcessResult:
         try:
@@ -67,6 +85,7 @@ class Pipeline:
             self.store.create_entry(meta, result.category, result.tags, result.title)
         except Exception as exc:  # noqa: BLE001 - surface any Notion write failure
             return ProcessResult("error", f"Couldn't save to Notion ({exc}).")
+        self._cache_thumbnail(meta)
         return ProcessResult(
             "saved", f"Saved to {result.category}.",
             category=result.category, tags=result.tags, meta=meta,
@@ -77,4 +96,6 @@ class Pipeline:
         self, meta: ReelMetadata, category: str, tags: list[str],
         title: str = "",
     ) -> str:
-        return self.store.create_entry(meta, category, tags, title)
+        url = self.store.create_entry(meta, category, tags, title)
+        self._cache_thumbnail(meta)
+        return url

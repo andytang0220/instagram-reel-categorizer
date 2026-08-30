@@ -114,3 +114,70 @@ def test_save_failure_returns_error():
         "https://www.instagram.com/reel/abc/")
     assert r.kind == "error"
     assert "Notion" in r.message
+
+
+class _Cacher:
+    """Records (shortcode, url) pairs the pipeline asks to cache."""
+
+    def __init__(self, err=False):
+        self.calls = []
+        self._err = err
+
+    def __call__(self, shortcode, url):
+        self.calls.append((shortcode, url))
+        if self._err:
+            raise RuntimeError("disk full")
+        return "thumbnails/x.jpg"
+
+
+def _pipe_with_cacher(fetcher, classifier, store, cacher):
+    return Pipeline([fetcher], classifier, store,
+                    lambda: ["Tech", "Food Recipes"], cache_thumbnail=cacher)
+
+
+def test_process_caches_thumbnail_after_saving():
+    meta = ReelMetadata(shortcode="abc", url="u", caption="cap",
+                        thumbnail_url="https://cdn/t.jpg")
+    cacher = _Cacher()
+    _pipe_with_cacher(_Fetcher(meta), _Classifier(
+        Classification("Tech", False, ["ai"], "r")), _Store(), cacher).process(
+        "https://www.instagram.com/reel/abc/")
+    assert cacher.calls == [("abc", "https://cdn/t.jpg")]
+
+
+def test_thumbnail_failure_does_not_break_a_save():
+    """A dead CDN URL must not turn a saved reel into an error."""
+    meta = ReelMetadata(shortcode="abc", url="u", caption="cap",
+                        thumbnail_url="https://cdn/t.jpg")
+    r = _pipe_with_cacher(_Fetcher(meta), _Classifier(
+        Classification("Tech", False, ["ai"], "r")), _Store(),
+        _Cacher(err=True)).process("https://www.instagram.com/reel/abc/")
+    assert r.kind == "saved"
+
+
+def test_no_thumbnail_url_skips_caching():
+    cacher = _Cacher()
+    _pipe_with_cacher(_Fetcher(), _Classifier(
+        Classification("Tech", False, ["ai"], "r")), _Store(), cacher).process(
+        "https://www.instagram.com/reel/abc/")
+    assert cacher.calls == []
+
+
+def test_save_caches_thumbnail():
+    cacher = _Cacher()
+    p = _pipe_with_cacher(_Fetcher(), _Classifier(None), _Store(), cacher)
+    meta = ReelMetadata(shortcode="abc", url="u",
+                        thumbnail_url="https://cdn/t.jpg")
+    p.save(meta, "Tech", ["ai"], "My Title")
+    assert cacher.calls == [("abc", "https://cdn/t.jpg")]
+
+
+def test_failed_save_does_not_cache_thumbnail():
+    cacher = _Cacher()
+    meta = ReelMetadata(shortcode="abc", url="u", caption="cap",
+                        thumbnail_url="https://cdn/t.jpg")
+    r = _pipe_with_cacher(_Fetcher(meta), _Classifier(
+        Classification("Tech", False, ["ai"], "r")), _FailingStore(),
+        cacher).process("https://www.instagram.com/reel/abc/")
+    assert r.kind == "error"
+    assert cacher.calls == []

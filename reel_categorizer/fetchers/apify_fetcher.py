@@ -5,7 +5,7 @@ from datetime import datetime
 import requests
 
 from ..models import ReelMetadata
-from .base import FetchError, MetadataFetcher, parse_hashtags
+from .base import FetchError, MetadataFetcher, parse_hashtags, to_int
 
 APIFY_ACTOR = "apify~instagram-scraper"
 
@@ -58,4 +58,10 @@ class ApifyFetcher(MetadataFetcher):
             author=item.get("ownerUsername") or "",
             post_date=post_date,
             source=self.name,
+            thumbnail_url=str(item.get("displayUrl") or ""),
+            # The actor reports plays for video posts and views for some
+            # older items; plays is the closer analogue to what the app shows.
+            view_count=to_int(item.get("videoPlayCount")
+                              if item.get("videoPlayCount") is not None
+                              else item.get("videoViewCount")),
         )

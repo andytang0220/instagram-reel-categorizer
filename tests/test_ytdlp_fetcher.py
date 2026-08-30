@@ -72,3 +72,42 @@ def test_ytdlp_version_supports_current_instagram():
         f"yt-dlp {version('yt-dlp')} is too old for Instagram's current "
         "anonymous-access rules; upgrade it"
     )
+
+
+def test_ytdlp_extracts_thumbnail_and_view_count():
+    info = {"description": "hi", "thumbnail": "https://cdn/t.jpg",
+            "view_count": 98765}
+    f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL(info))
+    m = f.fetch("https://www.instagram.com/reel/abc/", "abc")
+    assert m.thumbnail_url == "https://cdn/t.jpg"
+    assert m.view_count == 98765
+
+
+def test_ytdlp_falls_back_to_largest_thumbnails_entry():
+    """`thumbnail` is sometimes absent while `thumbnails` is populated."""
+    info = {"thumbnails": [
+        {"url": "https://cdn/small.jpg", "width": 150},
+        {"url": "https://cdn/big.jpg", "width": 1080},
+        {"url": "https://cdn/mid.jpg", "width": 640},
+    ]}
+    f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL(info))
+    m = f.fetch("u", "abc")
+    assert m.thumbnail_url == "https://cdn/big.jpg"
+
+
+def test_ytdlp_thumbnails_without_width_uses_last_entry():
+    info = {"thumbnails": [{"url": "https://cdn/a.jpg"}, {"url": "https://cdn/b.jpg"}]}
+    f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL(info))
+    assert f.fetch("u", "abc").thumbnail_url == "https://cdn/b.jpg"
+
+
+def test_ytdlp_missing_thumbnail_and_views_stay_empty():
+    f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL({}))
+    m = f.fetch("u", "abc")
+    assert m.thumbnail_url == ""
+    assert m.view_count is None
+
+
+def test_ytdlp_non_numeric_view_count_is_none():
+    f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL({"view_count": "lots"}))
+    assert f.fetch("u", "abc").view_count is None

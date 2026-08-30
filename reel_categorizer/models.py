@@ -15,3 +15,7 @@ class ReelMetadata:
     author: str = ""
     post_date: date | None = None
     source: str = ""
+    # Instagram CDN URLs are signed and expire, so this is only good for a
+    # one-shot download into the local thumbnail cache.
+    thumbnail_url: str = ""
+    view_count: int | None = None
