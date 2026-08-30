@@ -1,5 +1,5 @@
 python-telegram-bot>=21,<22
-yt-dlp>=2024.1.1
+yt-dlp>=2026.8.19
 anthropic>=0.40
 notion-client>=2.2,<3
 requests>=2.31

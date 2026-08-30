@@ -54,3 +54,21 @@ def test_ytdlp_raises_fetcherror():
     f = YtdlpFetcher(ydl_factory=lambda: _Boom())
     with pytest.raises(FetchError):
         f.fetch("u", "abc")
+
+
+def test_ytdlp_version_supports_current_instagram():
+    """Instagram gates anonymous metadata; older extractors get HTTP 401.
+
+    yt-dlp 2026.06.09 and earlier fail every anonymous path for reels
+    (GraphQL -> 401 require_login, page/embed -> bare JS shell with no
+    metadata), which pushes every fetch onto the paid Apify fallback.
+    2026.08.19 uses a working path. Instagram breaks scrapers often, so
+    this pins the floor to a version verified against a live reel.
+    """
+    from importlib.metadata import version
+
+    installed = tuple(int(p) for p in version("yt-dlp").split(".")[:3])
+    assert installed >= (2026, 8, 19), (
+        f"yt-dlp {version('yt-dlp')} is too old for Instagram's current "
+        "anonymous-access rules; upgrade it"
+    )
