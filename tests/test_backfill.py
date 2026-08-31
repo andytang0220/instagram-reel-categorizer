@@ -5,10 +5,10 @@ from reel_categorizer.models import ReelMetadata
 from reel_categorizer.notion_store import ReelRow
 
 
-def _row(shortcode="abc", views=1, thumbnail_url="https://cdn/t.jpg"):
+def _row(shortcode="abc", likes=1, thumbnail_url="https://cdn/t.jpg"):
     return ReelRow(page_id=f"page-{shortcode}", shortcode=shortcode,
                    url=f"https://www.instagram.com/reel/{shortcode}/",
-                   views=views, thumbnail_url=thumbnail_url)
+                   likes=likes, thumbnail_url=thumbnail_url)
 
 
 def _cached(tmp_path, shortcode="abc"):
@@ -22,13 +22,13 @@ def test_complete_row_needs_nothing(tmp_path):
     assert needs_backfill(_row(), _cached(tmp_path)) is False
 
 
-def test_row_without_views_needs_backfill(tmp_path):
-    assert needs_backfill(_row(views=None), _cached(tmp_path)) is True
+def test_row_without_likes_needs_backfill(tmp_path):
+    assert needs_backfill(_row(likes=None), _cached(tmp_path)) is True
 
 
-def test_zero_views_is_complete(tmp_path):
-    """0 views is a real answer, not a missing one."""
-    assert needs_backfill(_row(views=0), _cached(tmp_path)) is False
+def test_zero_likes_is_complete(tmp_path):
+    """0 likes is a real answer, not a missing one."""
+    assert needs_backfill(_row(likes=0), _cached(tmp_path)) is False
 
 
 def test_row_without_thumbnail_url_needs_backfill(tmp_path):
@@ -41,7 +41,7 @@ def test_row_with_uncached_image_needs_backfill(tmp_path):
 
 def test_row_without_shortcode_is_unfixable(tmp_path):
     """Nothing to fetch, so never select it."""
-    row = ReelRow(page_id="p", shortcode="", url="", views=None)
+    row = ReelRow(page_id="p", shortcode="", url="", likes=None)
     assert needs_backfill(row, tmp_path) is False
 
 
@@ -70,19 +70,19 @@ class _Store:
     def __init__(self):
         self.updated = []
 
-    def update_entry(self, page_id, views=None, thumbnail_url=None):
-        self.updated.append((page_id, views, thumbnail_url))
+    def update_entry(self, page_id, likes=None, thumbnail_url=None):
+        self.updated.append((page_id, likes, thumbnail_url))
 
 
 def _fetch_ok(url, shortcode):
     return ReelMetadata(shortcode=shortcode, url=url,
-                        thumbnail_url="https://cdn/fresh.jpg", view_count=999)
+                        thumbnail_url="https://cdn/fresh.jpg", like_count=999)
 
 
 def test_run_backfill_updates_notion_and_caches_thumbnail(tmp_path):
     store, cached = _Store(), []
     report = run_backfill(
-        store, [_row("abc", views=None)], fetch=_fetch_ok,
+        store, [_row("abc", likes=None)], fetch=_fetch_ok,
         cache_thumbnail=lambda s, u: cached.append((s, u)), sleep=lambda s: None)
     assert store.updated == [("page-abc", 999, "https://cdn/fresh.jpg")]
     assert cached == [("abc", "https://cdn/fresh.jpg")]
@@ -108,7 +108,7 @@ def test_run_backfill_records_fetch_failures_without_stopping(tmp_path):
 
 def test_run_backfill_records_notion_write_failures():
     class _Boom(_Store):
-        def update_entry(self, page_id, views=None, thumbnail_url=None):
+        def update_entry(self, page_id, likes=None, thumbnail_url=None):
             raise RuntimeError("notion down")
 
     report = run_backfill(

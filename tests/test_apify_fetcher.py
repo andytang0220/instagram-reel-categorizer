@@ -52,29 +52,23 @@ def test_apify_empty_raises():
         f.fetch("u", "abc")
 
 
-def test_apify_extracts_thumbnail_and_play_count():
+def test_apify_extracts_thumbnail_and_like_count():
     item = {"caption": "hi", "displayUrl": "https://cdn/d.jpg",
-            "videoPlayCount": 4321}
+            "likesCount": 4321}
     f = ApifyFetcher(token="tok", http=_Http([item]))
     m = f.fetch("u", "abc")
     assert m.thumbnail_url == "https://cdn/d.jpg"
-    assert m.view_count == 4321
+    assert m.like_count == 4321
 
 
-def test_apify_falls_back_to_video_view_count():
-    item = {"caption": "hi", "videoViewCount": 777}
-    f = ApifyFetcher(token="tok", http=_Http([item]))
-    assert f.fetch("u", "abc").view_count == 777
+def test_apify_negative_like_count_is_none():
+    """The actor reports -1 when likes are hidden on the post."""
+    f = ApifyFetcher(token="tok", http=_Http([{"likesCount": -1}]))
+    assert f.fetch("u", "abc").like_count is None
 
 
-def test_apify_prefers_play_count_over_view_count():
-    item = {"videoPlayCount": 900, "videoViewCount": 100}
-    f = ApifyFetcher(token="tok", http=_Http([item]))
-    assert f.fetch("u", "abc").view_count == 900
-
-
-def test_apify_missing_thumbnail_and_views_stay_empty():
+def test_apify_missing_thumbnail_and_likes_stay_empty():
     f = ApifyFetcher(token="tok", http=_Http([{"caption": "hi"}]))
     m = f.fetch("u", "abc")
     assert m.thumbnail_url == ""
-    assert m.view_count is None
+    assert m.like_count is None

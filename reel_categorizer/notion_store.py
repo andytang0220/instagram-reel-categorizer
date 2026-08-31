@@ -21,7 +21,7 @@ class ReelRow:
     category: str = ""
     tags: list[str] = field(default_factory=list)
     author: str = ""
-    views: int | None = None
+    likes: int | None = None
     post_date: str = ""
     date_added: str = ""
     thumbnail_url: str = ""
@@ -64,7 +64,7 @@ def parse_row(page: dict) -> ReelRow:
         category=select.get("name") or "",
         tags=[t["name"] for t in prop("Tags").get("multi_select") or []],
         author=_plain_text(prop("Author"), "rich_text"),
-        views=prop("Views").get("number"),
+        likes=prop("Likes").get("number"),
         post_date=date_prop.get("start") or "",
         # Rows predating the `Date Added` property still sort correctly.
         date_added=(prop("Date Added").get("created_time")
@@ -148,8 +148,8 @@ class NotionStore:
         }
         if meta.post_date:
             props["Post Date"] = {"date": {"start": meta.post_date.isoformat()}}
-        if meta.view_count is not None:
-            props["Views"] = {"number": meta.view_count}
+        if meta.like_count is not None:
+            props["Likes"] = {"number": meta.like_count}
         if meta.thumbnail_url:
             props["Thumbnail URL"] = {"url": meta.thumbnail_url}
         page = self._client.pages.create(
@@ -178,13 +178,13 @@ class NotionStore:
                 return rows
 
     def update_entry(
-        self, page_id: str, views: int | None = None,
+        self, page_id: str, likes: int | None = None,
         thumbnail_url: str | None = None,
     ) -> None:
         """Patch only the properties actually supplied. Used by the backfill."""
         props = {}
-        if views is not None:
-            props["Views"] = {"number": views}
+        if likes is not None:
+            props["Likes"] = {"number": likes}
         if thumbnail_url:
             props["Thumbnail URL"] = {"url": thumbnail_url}
         if not props:

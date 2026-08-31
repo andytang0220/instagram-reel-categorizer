@@ -28,7 +28,7 @@ match exactly:
 | Reel URL | URL |
 | Shortcode | Text |
 | Date Added | Created time |
-| Views | Number |
+| Likes | Number |
 | Thumbnail URL | URL |
 
 (Seed a couple of `Category` options if you like — new ones are auto-added.)
@@ -63,13 +63,17 @@ in Telegram.
 ## Browse your reels
 
 A local web app that shows your saved reels as clickable thumbnail tiles: one
-tab per category, that category's top 3 by view count, then everything in the
+tab per category, that category's top 3 by like count, then everything in the
 category newest-first and filterable by tag. Clicking a tile opens the reel on
 Instagram.
 
+Ranking uses likes rather than views because Instagram does not expose play
+counts to anonymous scrapers - yt-dlp returns `like_count` and `comment_count`
+for a reel, but never `view_count`.
+
 ### Backfill older reels
-Reels saved before views and thumbnails were captured have neither. Fill them
-in (add the `Views` and `Thumbnail URL` properties to your Notion database
+Reels saved before likes and thumbnails were captured have neither. Fill them
+in (add the `Likes` and `Thumbnail URL` properties to your Notion database
 first):
 ```bash
 .venv/Scripts/python -m reel_categorizer.backfill --limit 3
@@ -77,7 +81,7 @@ first):
 Check those three rows look right, then drop `--limit` for the rest. Each reel
 needs its own Instagram fetch, so it's paced at 3s apart (`--delay`) and is
 safe to re-run - anything that already succeeded is skipped. `--force`
-re-fetches everything, which is also how you refresh stale view counts.
+re-fetches everything, which is also how you refresh stale like counts.
 
 Thumbnail images are cached under `thumbnails/` because Instagram's CDN URLs
 expire after a few weeks.
@@ -107,6 +111,6 @@ cd frontend && npm test
 URL → shortcode → dedupe check → fetch metadata (yt-dlp, Apify fallback) →
 Claude classifies (category + tags, reusing existing tag vocabulary) → Notion row.
 New categories require a tap-to-confirm; tags are added automatically.
-Each reel's view count is stored as a snapshot from save time, and its
+Each reel's like count is stored as a snapshot from save time, and its
 thumbnail is downloaded to `thumbnails/` so the browser UI keeps working
 after Instagram's CDN links expire.

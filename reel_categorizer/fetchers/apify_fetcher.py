@@ -10,6 +10,12 @@ from .base import FetchError, MetadataFetcher, parse_hashtags, to_int
 APIFY_ACTOR = "apify~instagram-scraper"
 
 
+def _likes(item: dict) -> int | None:
+    """Like count, or None when the post hides it (reported as -1)."""
+    count = to_int(item.get("likesCount"))
+    return None if count is None or count < 0 else count
+
+
 class ApifyFetcher(MetadataFetcher):
     name = "apify"
 
@@ -59,9 +65,5 @@ class ApifyFetcher(MetadataFetcher):
             post_date=post_date,
             source=self.name,
             thumbnail_url=str(item.get("displayUrl") or ""),
-            # The actor reports plays for video posts and views for some
-            # older items; plays is the closer analogue to what the app shows.
-            view_count=to_int(item.get("videoPlayCount")
-                              if item.get("videoPlayCount") is not None
-                              else item.get("videoViewCount")),
+            like_count=_likes(item),
         )

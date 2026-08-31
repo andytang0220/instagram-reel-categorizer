@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatViews } from '../reels'
+import { formatCount } from '../reels'
 
 /**
  * One reel, linking out to Instagram.
@@ -31,7 +31,7 @@ export default function ReelTile({ reel, rank }) {
             onError={() => setFailed(true)}
           />
         )}
-        <span className="tile__views">{formatViews(reel.views)} views</span>
+        <span className="tile__likes">{formatCount(reel.likes)} likes</span>
       </div>
       <div className="tile__meta">
         <span className="tile__title">{reel.title || reel.shortcode}</span>

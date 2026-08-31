@@ -7,12 +7,12 @@ from reel_categorizer.web.server import create_app
 _JPEG = b"\xff\xd8\xff\xe0" + b"x" * 20
 
 
-def _row(shortcode, category="Tech", views=None, tags=None, added="2026-01-01",
+def _row(shortcode, category="Tech", likes=None, tags=None, added="2026-01-01",
          thumbnail_url=""):
     return ReelRow(
         page_id=f"page-{shortcode}", shortcode=shortcode,
         title=f"chef - {shortcode}", url=f"https://instagram.com/reel/{shortcode}/",
-        category=category, tags=list(tags or []), author="chef", views=views,
+        category=category, tags=list(tags or []), author="chef", likes=likes,
         post_date="2025-12-01", date_added=added, thumbnail_url=thumbnail_url,
     )
 
@@ -44,14 +44,14 @@ def _client(store=None, categories=("Tech", "Fitness"), tmp_path=None,
 # --- /api/reels ------------------------------------------------------------
 
 def test_reels_returns_categories_and_rows(tmp_path):
-    store = _Store([_row("a", "Tech", views=10, tags=["ai"])])
+    store = _Store([_row("a", "Tech", likes=10, tags=["ai"])])
     body = _client(store, tmp_path=tmp_path).get("/api/reels").json()
     assert body["categories"] == ["Tech", "Fitness"]
     assert len(body["reels"]) == 1
     reel = body["reels"][0]
     assert reel["shortcode"] == "a"
     assert reel["category"] == "Tech"
-    assert reel["views"] == 10
+    assert reel["likes"] == 10
     assert reel["tags"] == ["ai"]
     assert reel["url"] == "https://instagram.com/reel/a/"
     assert reel["title"] == "chef - a"

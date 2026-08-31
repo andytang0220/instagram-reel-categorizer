@@ -1,4 +1,4 @@
-"""Fill in views and thumbnails for reels saved before those were captured.
+"""Fill in likes and thumbnails for reels saved before those were captured.
 
 Run it manually:
 
@@ -7,7 +7,7 @@ Run it manually:
 Every reel needs its own Instagram fetch, so this is deliberately slow and
 polite. It is also safe to re-run: rows that already succeeded are skipped, so
 an interrupted run just picks up where it left off. `--force` re-fetches
-everything, which doubles as a way to refresh stale view counts.
+everything, which doubles as a way to refresh stale like counts.
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def needs_backfill(row: ReelRow, thumb_root) -> bool:
     """True when this row is missing data a fetch could supply."""
     if not row.shortcode:
         return False  # nothing to fetch against
-    return (row.views is None
+    return (row.likes is None
             or not row.thumbnail_url
             or not is_cached(row.shortcode, thumb_root))
 
@@ -51,7 +51,7 @@ def select_rows(rows, thumb_root, force: bool = False,
 
 def run_backfill(store, rows, fetch, cache_thumbnail, delay: float = 0.0,
                  sleep=time.sleep, log=lambda msg: None) -> BackfillReport:
-    """Re-fetch each row and write views + thumbnail back.
+    """Re-fetch each row and write likes + thumbnail back.
 
     Failures are collected rather than raised — a deleted or private reel
     should not abort a long run.
@@ -61,13 +61,13 @@ def run_backfill(store, rows, fetch, cache_thumbnail, delay: float = 0.0,
         label = row.shortcode
         try:
             meta = fetch(row.url or canonical_url(row.shortcode), row.shortcode)
-            store.update_entry(row.page_id, views=meta.view_count,
+            store.update_entry(row.page_id, likes=meta.like_count,
                                thumbnail_url=meta.thumbnail_url)
             if meta.thumbnail_url:
                 cache_thumbnail(row.shortcode, meta.thumbnail_url)
             report.updated.append(label)
             log(f"  [{i + 1}/{len(rows)}] {label}: "
-                f"views={meta.view_count} thumb={'yes' if meta.thumbnail_url else 'no'}")
+                f"likes={meta.like_count} thumb={'yes' if meta.thumbnail_url else 'no'}")
         except Exception as exc:  # noqa: BLE001 - one bad reel must not stop the run
             report.failed.append((label, str(exc)))
             log(f"  [{i + 1}/{len(rows)}] {label}: FAILED - {exc}")
@@ -85,7 +85,7 @@ def main(argv=None) -> int:
     parser.add_argument("--delay", type=float, default=DEFAULT_DELAY,
                         help="seconds to wait between reels (default: 3)")
     parser.add_argument("--force", action="store_true",
-                        help="re-fetch every reel, refreshing view counts")
+                        help="re-fetch every reel, refreshing like counts")
     args = parser.parse_args(argv)
 
     settings = load_settings()

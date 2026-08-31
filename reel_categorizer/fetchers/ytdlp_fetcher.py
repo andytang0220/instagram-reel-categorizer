@@ -63,5 +63,5 @@ class YtdlpFetcher(MetadataFetcher):
             post_date=post_date,
             source=self.name,
             thumbnail_url=_pick_thumbnail(info),
-            view_count=to_int(info.get("view_count")),
+            like_count=to_int(info.get("like_count")),
         )

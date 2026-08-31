@@ -21,16 +21,16 @@ def test_reelmetadata_full():
     assert m.source == "ytdlp"
 
 
-def test_reelmetadata_thumbnail_and_views_default_empty():
+def test_reelmetadata_thumbnail_and_likes_default_empty():
     m = ReelMetadata(shortcode="abc", url="https://x/reel/abc/")
     assert m.thumbnail_url == ""
-    assert m.view_count is None
+    assert m.like_count is None
 
 
-def test_reelmetadata_carries_thumbnail_and_views():
+def test_reelmetadata_carries_thumbnail_and_likes():
     m = ReelMetadata(
         shortcode="abc", url="u",
-        thumbnail_url="https://cdn/thumb.jpg", view_count=12345,
+        thumbnail_url="https://cdn/thumb.jpg", like_count=12345,
     )
     assert m.thumbnail_url == "https://cdn/thumb.jpg"
-    assert m.view_count == 12345
+    assert m.like_count == 12345

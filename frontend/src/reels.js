@@ -4,13 +4,13 @@ export function byCategory(reels, category) {
   return reels.filter((r) => r.category === category)
 }
 
-// Reels whose view count was never captured rank below every known count,
+// Reels whose like count was never captured rank below every known count,
 // including zero.
-const viewRank = (r) => (typeof r.views === 'number' ? r.views : -1)
+const likeRank = (r) => (typeof r.likes === 'number' ? r.likes : -1)
 
 export function topThree(reels) {
   return [...reels]
-    .sort((a, b) => viewRank(b) - viewRank(a) ||
+    .sort((a, b) => likeRank(b) - likeRank(a) ||
       String(b.date_added).localeCompare(String(a.date_added)))
     .slice(0, 3)
 }
@@ -40,11 +40,11 @@ export function filterByTags(reels, selectedTags) {
   return reels.filter((r) => (r.tags || []).some((t) => wanted.has(t)))
 }
 
-export function formatViews(views) {
-  if (typeof views !== 'number') return '—'
-  if (views >= 1_000_000) return `${trim(views / 1_000_000)}M`
-  if (views >= 1_000) return `${trim(views / 1_000)}K`
-  return String(views)
+export function formatCount(likes) {
+  if (typeof likes !== 'number') return '—'
+  if (likes >= 1_000_000) return `${trim(likes / 1_000_000)}M`
+  if (likes >= 1_000) return `${trim(likes / 1_000)}K`
+  return String(likes)
 }
 
 // 1.5K but 12K, not 12.0K.

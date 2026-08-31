@@ -74,13 +74,13 @@ def test_ytdlp_version_supports_current_instagram():
     )
 
 
-def test_ytdlp_extracts_thumbnail_and_view_count():
+def test_ytdlp_extracts_thumbnail_and_like_count():
     info = {"description": "hi", "thumbnail": "https://cdn/t.jpg",
-            "view_count": 98765}
+            "like_count": 98765}
     f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL(info))
     m = f.fetch("https://www.instagram.com/reel/abc/", "abc")
     assert m.thumbnail_url == "https://cdn/t.jpg"
-    assert m.view_count == 98765
+    assert m.like_count == 98765
 
 
 def test_ytdlp_falls_back_to_largest_thumbnails_entry():
@@ -101,13 +101,13 @@ def test_ytdlp_thumbnails_without_width_uses_last_entry():
     assert f.fetch("u", "abc").thumbnail_url == "https://cdn/b.jpg"
 
 
-def test_ytdlp_missing_thumbnail_and_views_stay_empty():
+def test_ytdlp_missing_thumbnail_and_likes_stay_empty():
     f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL({}))
     m = f.fetch("u", "abc")
     assert m.thumbnail_url == ""
-    assert m.view_count is None
+    assert m.like_count is None
 
 
-def test_ytdlp_non_numeric_view_count_is_none():
-    f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL({"view_count": "lots"}))
-    assert f.fetch("u", "abc").view_count is None
+def test_ytdlp_non_numeric_like_count_is_none():
+    f = YtdlpFetcher(ydl_factory=lambda: _FakeYDL({"like_count": "lots"}))
+    assert f.fetch("u", "abc").like_count is None

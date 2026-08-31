@@ -129,32 +129,32 @@ def test_create_entry_title_untitled_when_no_caption_or_hashtags():
 
 # --- new properties on create ---------------------------------------------
 
-def test_create_entry_writes_views_and_thumbnail_url():
+def test_create_entry_writes_likes_and_thumbnail_url():
     fake = _FakeNotion()
     m = ReelMetadata(shortcode="abc", url="u", caption="hi",
-                     thumbnail_url="https://cdn/t.jpg", view_count=5000)
+                     thumbnail_url="https://cdn/t.jpg", like_count=5000)
     NotionStore(fake, "db").create_entry(m, "Tech", ["ai"])
     _, props = fake.created[0]
-    assert props["Views"]["number"] == 5000
+    assert props["Likes"]["number"] == 5000
     assert props["Thumbnail URL"]["url"] == "https://cdn/t.jpg"
 
 
-def test_create_entry_omits_views_and_thumbnail_when_absent():
+def test_create_entry_omits_likes_and_thumbnail_when_absent():
     fake = _FakeNotion()
     m = ReelMetadata(shortcode="abc", url="u", caption="hi")
     NotionStore(fake, "db").create_entry(m, "Tech", ["ai"])
     _, props = fake.created[0]
-    assert "Views" not in props
+    assert "Likes" not in props
     assert "Thumbnail URL" not in props
 
 
-def test_create_entry_writes_zero_views():
-    """0 views is real data, not a missing value."""
+def test_create_entry_writes_zero_likes():
+    """0 likes is real data, not a missing value."""
     fake = _FakeNotion()
-    m = ReelMetadata(shortcode="abc", url="u", caption="hi", view_count=0)
+    m = ReelMetadata(shortcode="abc", url="u", caption="hi", like_count=0)
     NotionStore(fake, "db").create_entry(m, "Tech", ["ai"])
     _, props = fake.created[0]
-    assert props["Views"]["number"] == 0
+    assert props["Likes"]["number"] == 0
 
 
 # --- parse_row -------------------------------------------------------------
@@ -179,7 +179,7 @@ def test_parse_row_maps_every_property():
            "Post Date": {"type": "date", "date": {"start": "2026-02-14"}},
            "Date Added": {"type": "created_time",
                           "created_time": "2026-02-15T09:30:00.000Z"},
-           "Views": {"type": "number", "number": 12345},
+           "Likes": {"type": "number", "number": 12345},
            "Thumbnail URL": {"type": "url", "url": "https://cdn/t.jpg"}}))
     assert row.page_id == "page-1"
     assert row.title == "chef - Best Tacos"
@@ -190,7 +190,7 @@ def test_parse_row_maps_every_property():
     assert row.shortcode == "abc"
     assert row.post_date == "2026-02-14"
     assert row.date_added == "2026-02-15T09:30:00.000Z"
-    assert row.views == 12345
+    assert row.likes == 12345
     assert row.thumbnail_url == "https://cdn/t.jpg"
 
 
@@ -204,7 +204,7 @@ def test_parse_row_tolerates_missing_properties():
     assert row.url == ""
     assert row.shortcode == ""
     assert row.post_date == ""
-    assert row.views is None
+    assert row.likes is None
     assert row.thumbnail_url == ""
 
 
@@ -218,12 +218,12 @@ def test_parse_row_tolerates_null_valued_properties():
         **{"Category": {"type": "select", "select": None},
            "Reel URL": {"type": "url", "url": None},
            "Post Date": {"type": "date", "date": None},
-           "Views": {"type": "number", "number": None},
+           "Likes": {"type": "number", "number": None},
            "Thumbnail URL": {"type": "url", "url": None}}))
     assert row.category == ""
     assert row.url == ""
     assert row.post_date == ""
-    assert row.views is None
+    assert row.likes is None
     assert row.thumbnail_url == ""
 
 
@@ -289,18 +289,18 @@ def test_query_all_empty_database():
 def test_update_entry_patches_both_properties():
     fake = _FakeNotion()
     NotionStore(fake, "db").update_entry(
-        "page-1", views=42, thumbnail_url="https://cdn/t.jpg")
+        "page-1", likes=42, thumbnail_url="https://cdn/t.jpg")
     page_id, props = fake.updated[0]
     assert page_id == "page-1"
-    assert props["Views"]["number"] == 42
+    assert props["Likes"]["number"] == 42
     assert props["Thumbnail URL"]["url"] == "https://cdn/t.jpg"
 
 
 def test_update_entry_patches_only_what_is_supplied():
     fake = _FakeNotion()
-    NotionStore(fake, "db").update_entry("page-1", views=42)
+    NotionStore(fake, "db").update_entry("page-1", likes=42)
     _, props = fake.updated[0]
-    assert "Views" in props
+    assert "Likes" in props
     assert "Thumbnail URL" not in props
 
 
