@@ -28,6 +28,8 @@ match exactly:
 | Reel URL | URL |
 | Shortcode | Text |
 | Date Added | Created time |
+| Views | Number |
+| Thumbnail URL | URL |
 
 (Seed a couple of `Category` options if you like — new ones are auto-added.)
 
@@ -58,12 +60,53 @@ Edit `categories.json` to taste.
 Leave it running (the bot only works while this process is up). Send a reel link
 in Telegram.
 
+## Browse your reels
+
+A local web app that shows your saved reels as clickable thumbnail tiles: one
+tab per category, that category's top 3 by view count, then everything in the
+category newest-first and filterable by tag. Clicking a tile opens the reel on
+Instagram.
+
+### Backfill older reels
+Reels saved before views and thumbnails were captured have neither. Fill them
+in (add the `Views` and `Thumbnail URL` properties to your Notion database
+first):
+```bash
+.venv/Scripts/python -m reel_categorizer.backfill --limit 3
+```
+Check those three rows look right, then drop `--limit` for the rest. Each reel
+needs its own Instagram fetch, so it's paced at 3s apart (`--delay`) and is
+safe to re-run - anything that already succeeded is skipped. `--force`
+re-fetches everything, which is also how you refresh stale view counts.
+
+Thumbnail images are cached under `thumbnails/` because Instagram's CDN URLs
+expire after a few weeks.
+
+### Build the UI (once)
+```bash
+cd frontend && npm install && npm run build
+```
+
+### Run it
+```bash
+.venv/Scripts/python -m reel_categorizer.web
+```
+Then open http://127.0.0.1:8000. This reads Notion live, so it picks up new
+reels on reload; it's independent of the bot process.
+
+For frontend development, `npm run dev` in `frontend/` serves with hot reload
+and proxies the API to the Python server, which needs to be running too.
+
 ## Test
 ```bash
 .venv/Scripts/python -m pytest -q
+cd frontend && npm test
 ```
 
 ## How it works
 URL → shortcode → dedupe check → fetch metadata (yt-dlp, Apify fallback) →
 Claude classifies (category + tags, reusing existing tag vocabulary) → Notion row.
 New categories require a tap-to-confirm; tags are added automatically.
+Each reel's view count is stored as a snapshot from save time, and its
+thumbnail is downloaded to `thumbnails/` so the browser UI keeps working
+after Instagram's CDN links expire.
